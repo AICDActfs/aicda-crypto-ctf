@@ -18,7 +18,25 @@ from config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Universal CORS configuration for Vercel, BurpSuite, and cURL
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        res = make_response()
+        res.headers["Access-Control-Allow-Origin"] = "*"
+        res.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        res.headers["Access-Control-Allow-Headers"] = "*"
+        return res
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
 
 DB_NAME = Config.DB_NAME
 
@@ -75,7 +93,26 @@ def health():
         "service": "Production Cryptography Pentesting Engine"
     })
 
-@app.route('/api/v1/submit-flag', methods=['POST'])
+@app.route('/api/v1/register-student', methods=['POST', 'OPTIONS'])
+def register_student():
+    data = request.json or {}
+    student_name = (data.get('student_name') or '').strip()
+    if not student_name:
+        return jsonify({"status": "error", "message": "Student name is required."}), 400
+
+    conn = get_db()
+    c = conn.cursor()
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        c.execute("INSERT OR IGNORE INTO students (name, created_at, last_active) VALUES (?, ?, ?)", 
+                  (student_name, now, now))
+        c.execute("UPDATE students SET last_active = ? WHERE name = ?", (now, student_name))
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"status": "registered", "student_name": student_name})
+
+@app.route('/api/v1/submit-flag', methods=['POST', 'OPTIONS'])
 def submit_flag():
     data = request.json or {}
     student_name = (data.get('student_name') or '').strip()
@@ -114,6 +151,32 @@ def submit_flag():
         })
     else:
         return jsonify({"correct": False, "message": "ACCESS DENIED: Invalid flag token."}), 400
+
+@app.route('/api/v1/reset-progress', methods=['POST', 'OPTIONS'])
+def reset_progress():
+    data = request.json or {}
+    student_name = (data.get('student_name') or '').strip()
+    reset_all = data.get('reset_all', False)
+    admin_key = data.get('admin_key', '')
+
+    conn = get_db()
+    c = conn.cursor()
+    try:
+        if reset_all:
+            if admin_key != 'AICDAadmin':
+                return jsonify({"status": "error", "message": "Unauthorized"}), 403
+            c.execute("DELETE FROM submissions")
+            c.execute("DELETE FROM students")
+            conn.commit()
+            return jsonify({"status": "success", "message": "All operative progress wiped."})
+        elif student_name:
+            c.execute("DELETE FROM submissions WHERE student_name = ?", (student_name,))
+            conn.commit()
+            return jsonify({"status": "success", "message": f"Progress reset for operative {student_name}."})
+        else:
+            return jsonify({"status": "error", "message": "Target student name required"}), 400
+    finally:
+        conn.close()
 
 @app.route('/api/v1/user-progress', methods=['GET'])
 def user_progress():
@@ -160,12 +223,10 @@ def leaderboard():
         })
     return jsonify({"leaderboard": leaderboard_data})
 
-# --- Lab 1: AES-CBC Bit-Flipping (Clear 16-byte blocks) ---
+# --- Lab 1: AES-CBC Bit-Flipping ---
 @app.route('/api/v1/cbc/cookie', methods=['GET'])
 def cbc_get_cookie():
     iv = os.urandom(16)
-    # Block 0 (16 bytes): 'role=user;data=x'
-    # Block 1 (16 bytes): 'auth=false;sess='
     plaintext = b"role=user;data=x" + b"auth=false;sess="
     cipher = AES.new(CBC_KEY, AES.MODE_CBC, iv)
     ciphertext = cipher.encrypt(plaintext)
@@ -174,7 +235,7 @@ def cbc_get_cookie():
     resp.set_cookie('auth_session', token)
     return resp
 
-@app.route('/api/v1/cbc/admin', methods=['POST'])
+@app.route('/api/v1/cbc/admin', methods=['POST', 'OPTIONS'])
 def cbc_admin():
     data = request.json or {}
     token_hex = data.get('token') or request.cookies.get('auth_session')
@@ -202,7 +263,7 @@ def padding_oracle_token():
     ct = cipher.encrypt(pad(secret_payload, 16))
     return jsonify({"token": (iv + ct).hex()})
 
-@app.route('/api/v1/padding-oracle/decrypt', methods=['POST'])
+@app.route('/api/v1/padding-oracle/decrypt', methods=['POST', 'OPTIONS'])
 def padding_oracle_decrypt():
     data = request.json or {}
     token_hex = data.get('ciphertext')
@@ -222,7 +283,7 @@ def padding_oracle_decrypt():
         return jsonify({"status": "error", "message": str(e)}), 400
 
 # --- Lab 3: AES-ECB Byte-at-a-Time ---
-@app.route('/api/v1/ecb/encrypt', methods=['POST'])
+@app.route('/api/v1/ecb/encrypt', methods=['POST', 'OPTIONS'])
 def ecb_encrypt():
     data = request.json or {}
     user_input = (data.get('data') or '').encode()
@@ -231,7 +292,7 @@ def ecb_encrypt():
     ct = cipher.encrypt(pad(combined, 16))
     return jsonify({"ciphertext": ct.hex()})
 
-# --- Lab 4: Stream Cipher Nonce Reuse (Reliable CTR Mode) ---
+# --- Lab 4: Stream Cipher Nonce Reuse ---
 @app.route('/api/v1/nonce-reuse/transmissions', methods=['GET'])
 def nonce_reuse_transmissions():
     p1 = b"AICDA-SEC-DIRECTIVE: System maintenance scheduled for Sunday at 00:00 UTC."
@@ -246,7 +307,7 @@ def nonce_reuse_transmissions():
     return jsonify({"p1_known_plaintext": p1.decode(), "c1_hex": c1.hex(), "c2_hex": c2.hex()})
 
 # --- Lab 5: PRNG Predictability ---
-@app.route('/api/v1/prng/request-reset', methods=['POST'])
+@app.route('/api/v1/prng/request-reset', methods=['POST', 'OPTIONS'])
 def prng_request_reset():
     data = request.json or {}
     username = data.get('username')
@@ -265,7 +326,7 @@ def prng_request_reset():
     resp.headers['X-Server-Timestamp'] = str(server_time)
     return resp
 
-@app.route('/api/v1/prng/verify-reset', methods=['POST'])
+@app.route('/api/v1/prng/verify-reset', methods=['POST', 'OPTIONS'])
 def prng_verify_reset():
     data = request.json or {}
     token = data.get('token')
@@ -304,7 +365,7 @@ def jwt_get_token():
     token = jwt.encode(payload, RSA_PRIV_PEM, algorithm="RS256")
     return jsonify({"token": token})
 
-@app.route('/api/v1/jwt/admin-dashboard', methods=['POST'])
+@app.route('/api/v1/jwt/admin-dashboard', methods=['POST', 'OPTIONS'])
 def jwt_admin_dashboard():
     auth_header = request.headers.get('Authorization', '')
     token = auth_header.replace('Bearer ', '').strip()
@@ -333,7 +394,7 @@ def jwt_admin_dashboard():
 def rsa_params():
     return jsonify({"e": RSA_KEY.e, "n": hex(RSA_KEY.n), "keysize_bits": 2048})
 
-@app.route('/api/v1/rsa/verify', methods=['POST'])
+@app.route('/api/v1/rsa/verify', methods=['POST', 'OPTIONS'])
 def rsa_verify():
     data = request.json or {}
     msg = data.get('message', '').encode()
@@ -358,7 +419,7 @@ def rsa_verify():
         return jsonify({"verified": False, "error": str(e)}), 400
 
 # --- Lab 9: Timing Attack ---
-@app.route('/api/v1/timing/verify-pin', methods=['POST'])
+@app.route('/api/v1/timing/verify-pin', methods=['POST', 'OPTIONS'])
 def timing_verify_pin():
     data = request.json or {}
     supplied_pin = data.get('pin', '')
@@ -389,7 +450,7 @@ def pbkdf2_vault_dump():
         "encrypted_vault_flag": CIPHER_FLAG10
     })
 
-@app.route('/api/v1/pbkdf2/unlock', methods=['POST'])
+@app.route('/api/v1/pbkdf2/unlock', methods=['POST', 'OPTIONS'])
 def pbkdf2_unlock():
     data = request.json or {}
     passphrase = (data.get('passphrase') or '').encode()
@@ -401,8 +462,5 @@ def pbkdf2_unlock():
     return jsonify({"status": "denied", "message": "Invalid passphrase"}), 403
 
 if __name__ == '__main__':
-    print("=" * 60)
-    print(" AICDA Production Cryptography Pentesting Engine")
-    print(f" Listening on http://0.0.0.0:{Config.PORT}")
-    print("=" * 60)
-    app.run(host=Config.HOST, port=Config.PORT, debug=Config.DEBUG)
+    port = int(os.environ.get('PORT', Config.PORT))
+    app.run(host=Config.HOST, port=port, debug=Config.DEBUG)

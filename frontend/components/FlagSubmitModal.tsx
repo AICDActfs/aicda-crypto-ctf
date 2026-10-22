@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://aicda-crypto-api.onrender.com';
+
 interface FlagSubmitModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,11 +27,10 @@ export default function FlagSubmitModal({ isOpen, onClose, onSubmitSuccess }: Fl
     setMessage('');
     setIsError(false);
 
-    const studentName = localStorage.getItem('aicda_student_name') || 'Agent';
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    const studentName = localStorage.getItem('aicda_student_name') || 'operative';
 
     try {
-      const res = await fetch(`${apiUrl}/api/v1/submit-flag`, {
+      const res = await fetch(`${API_BASE}/api/v1/submit-flag`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_name: studentName, level, flag: flag.trim() })
@@ -44,7 +45,7 @@ export default function FlagSubmitModal({ isOpen, onClose, onSubmitSuccess }: Fl
           setFlag('');
           setMessage('');
           onClose();
-        }, 1200);
+        }, 1000);
       } else {
         setIsError(true);
         setMessage(data.message || 'ACCESS DENIED: Invalid flag');

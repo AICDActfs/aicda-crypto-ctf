@@ -6,6 +6,8 @@ import MatrixRain from '../../components/MatrixRain';
 import LabCard from '../../components/LabCard';
 import FlagSubmitModal from '../../components/FlagSubmitModal';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://aicda-crypto-api.onrender.com';
+
 const LABS = [
   { level: 1, title: 'AES-CBC Bit-Flipping Attack', category: 'BLOCK CIPHER MALLEABILITY', points: 100, slug: 'cbc-bit-flipping' },
   { level: 2, title: 'PKCS#7 Padding Oracle Exploit', category: 'SIDE-CHANNEL ERROR ORACLE', points: 100, slug: 'padding-oracle' },
@@ -28,8 +30,7 @@ export default function LabsDashboard() {
 
   const syncSolvedProgress = useCallback(async (name: string) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-      const res = await fetch(`${apiUrl}/api/v1/user-progress?student_name=${encodeURIComponent(name)}`);
+      const res = await fetch(`${API_BASE}/api/v1/user-progress?student_name=${encodeURIComponent(name)}`);
       const data = await res.json();
       if (data.solved) {
         const state: Record<number, boolean> = {};
@@ -58,16 +59,21 @@ export default function LabsDashboard() {
     }
     setIsResetting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-      await fetch(`${apiUrl}/api/v1/reset-progress`, {
+      const res = await fetch(`${API_BASE}/api/v1/reset-progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_name: studentName })
       });
-      setSolved({});
-      alert("SUCCESS: All flags have been reset to 0/10.");
+      if (res.ok) {
+        setSolved({});
+        alert("SUCCESS: All flags have been reset to 0/10.");
+      } else {
+        alert("Server returned error resetting flags.");
+      }
     } catch (err) {
-      alert("Connection failure while resetting flags.");
+      // Even if network blips, reset client-side
+      setSolved({});
+      alert("Flags reset locally in your active session.");
     } finally {
       setIsResetting(false);
     }
@@ -90,7 +96,6 @@ export default function LabsDashboard() {
       <Header />
 
       <main className="max-w-7xl mx-auto w-full px-4 pt-6 flex-1">
-        {/* Current Session Sub-Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
             <span className="text-[11px] text-gray-400 font-mono block uppercase">CURRENT SESSION</span>
@@ -114,7 +119,6 @@ export default function LabsDashboard() {
           </div>
         </div>
 
-        {/* Operational Progress Bar with 1000 PTS */}
         <div className="bg-black/80 border border-matrix-green/40 p-4 rounded-lg mb-6 shadow-[0_0_15px_rgba(0,255,65,0.15)]">
           <div className="flex justify-between items-center text-xs sm:text-sm font-mono mb-2">
             <span className="text-matrix-light font-bold">OPERATIONAL PROGRESS ({solvedCount}/10)</span>
@@ -128,7 +132,6 @@ export default function LabsDashboard() {
           </div>
         </div>
 
-        {/* Victory Box when 10/10 Solved */}
         {isAllSolved && (
           <div className="border border-matrix-green bg-black/90 p-6 rounded-lg text-center mb-8 shadow-[0_0_25px_rgba(0,255,65,0.3)]">
             <h2 className="text-2xl font-bold glitch text-white mb-2">
@@ -146,7 +149,6 @@ export default function LabsDashboard() {
           </div>
         )}
 
-        {/* Challenge Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-12">
           {LABS.map((lab) => (
             <LabCard 
@@ -157,7 +159,6 @@ export default function LabsDashboard() {
           ))}
         </div>
 
-        {/* Fixed / Prominent Submit Flag Button */}
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
           <button 
             onClick={() => setIsModalOpen(true)}
