@@ -32,8 +32,8 @@ const LAB_DATA: Record<string, {
       "3. Compute the bitmask difference between 'user' and 'admn'.",
       "4. Flip the corresponding byte in the previous block (or IV) and submit to /api/v1/cbc/admin."
     ],
-    targetEndpoint: "http://localhost:8080/api/v1/cbc/admin",
-    sampleCommand: "curl -s -X POST http://localhost:8080/api/v1/cbc/admin -H 'Content-Type: application/json' -d '{\"token\":\"<MODIFIED_HEX>\"}'",
+    targetEndpoint: "https://aicda-crypto-api.onrender.com/api/v1/cbc/admin",
+    sampleCommand: "curl -s -X POST https://aicda-crypto-api.onrender.com/api/v1/cbc/admin -H 'Content-Type: application/json' -d '{\"token\":\"<MODIFIED_HEX>\"}'",
     objective: "Elevate your session privileges from role=user to role=admn via ciphertext bit manipulation."
   },
   'padding-oracle': {
@@ -51,8 +51,8 @@ const LAB_DATA: Record<string, {
       "3. Test 0x00 through 0xFF on the penultimate block to discover the valid padding byte.",
       "4. Iterate through all blocks to recover the full plaintext and flag."
     ],
-    targetEndpoint: "http://localhost:8080/api/v1/padding-oracle/decrypt",
-    sampleCommand: "curl -s -X POST http://localhost:8080/api/v1/padding-oracle/decrypt -H 'Content-Type: application/json' -d '{\"ciphertext\":\"<HEX>\"}'",
+    targetEndpoint: "https://aicda-crypto-api.onrender.com/api/v1/padding-oracle/decrypt",
+    sampleCommand: "curl -s -X POST https://aicda-crypto-api.onrender.com/api/v1/padding-oracle/decrypt -H 'Content-Type: application/json' -d '{\"ciphertext\":\"<HEX>\"}'",
     objective: "Decrypt the ciphertext without the AES key by querying the server's PKCS#7 error response."
   },
   'ecb-byte-at-a-time': {
@@ -70,8 +70,8 @@ const LAB_DATA: Record<string, {
       "2. For each byte offset, query all printable characters (0x20 to 0x7E) to build dictionary blocks.",
       "3. Match ciphertext blocks to reconstruct the flag character by character."
     ],
-    targetEndpoint: "http://localhost:8080/api/v1/ecb/encrypt",
-    sampleCommand: "curl -s -X POST http://localhost:8080/api/v1/ecb/encrypt -H 'Content-Type: application/json' -d '{\"data\":\"AAAAAAAAAAAAAAA\"}'",
+    targetEndpoint: "https://aicda-crypto-api.onrender.com/api/v1/ecb/encrypt",
+    sampleCommand: "curl -s -X POST https://aicda-crypto-api.onrender.com/api/v1/ecb/encrypt -H 'Content-Type: application/json' -d '{\"data\":\"AAAAAAAAAAAAAAA\"}'",
     objective: "Extract the secret flag appended to your input by aligning plaintext blocks under AES-ECB."
   },
   'nonce-reuse': {
@@ -90,8 +90,8 @@ const LAB_DATA: Record<string, {
       "3. Compute P2 = bytes_xor(bytes_xor(C1, C2), P1).",
       "4. Parse the recovered ASCII string to obtain the secret flag."
     ],
-    targetEndpoint: "http://localhost:8080/api/v1/nonce-reuse/transmissions",
-    sampleCommand: "curl -s http://localhost:8080/api/v1/nonce-reuse/transmissions",
+    targetEndpoint: "https://aicda-crypto-api.onrender.com/api/v1/nonce-reuse/transmissions",
+    sampleCommand: "curl -s https://aicda-crypto-api.onrender.com/api/v1/nonce-reuse/transmissions",
     objective: "Eliminate the keystream via XOR cancellation to recover confidential command transmission P2."
   },
   'prng-predictability': {
@@ -110,8 +110,8 @@ const LAB_DATA: Record<string, {
       "3. Run a local Python script seeding random.seed(timestamp) to generate the 128-bit hex token.",
       "4. Submit the token to /api/v1/prng/verify-reset to claim the admin account."
     ],
-    targetEndpoint: "http://localhost:8080/api/v1/prng/verify-reset",
-    sampleCommand: "curl -s -X POST http://localhost:8080/api/v1/prng/request-reset -H 'Content-Type: application/json' -d '{\"username\":\"admin\"}'",
+    targetEndpoint: "https://aicda-crypto-api.onrender.com/api/v1/prng/verify-reset",
+    sampleCommand: "curl -s -X POST https://aicda-crypto-api.onrender.com/api/v1/prng/request-reset -H 'Content-Type: application/json' -d '{\"username\":\"admin\"}'",
     objective: "Predict the administrator password reset token by synchronizing with the server's PRNG timestamp."
   },
   'hash-length-extension': {
@@ -129,8 +129,8 @@ const LAB_DATA: Record<string, {
       "3. Use hashpump or custom Python script to append '&role=admin' to the message.",
       "4. Submit the extended payload and newly derived signature to /api/v1/hash-extension/verify."
     ],
-    targetEndpoint: "http://localhost:8080/api/v1/hash-extension/verify",
-    sampleCommand: "curl -s 'http://localhost:8080/api/v1/hash-extension/generate'",
+    targetEndpoint: "https://aicda-crypto-api.onrender.com/api/v1/hash-extension/verify",
+    sampleCommand: "curl -s 'https://aicda-crypto-api.onrender.com/api/v1/hash-extension/generate'",
     objective: "Append admin privileges to an authenticated session without knowing the backend secret key."
   },
   'jwt-algorithm-confusion': {
@@ -147,8 +147,8 @@ const LAB_DATA: Record<string, {
       "3. Sign the token using HMAC-SHA256 with the exact RSA public key PEM string as the secret (or test alg: none).",
       "4. Submit token as Bearer header to /api/v1/jwt/admin-dashboard."
     ],
-    targetEndpoint: "http://localhost:8080/api/v1/jwt/admin-dashboard",
-    sampleCommand: "curl -s -X POST http://localhost:8080/api/v1/jwt/admin-dashboard -H 'Authorization: Bearer <TOKEN>'",
+    targetEndpoint: "https://aicda-crypto-api.onrender.com/api/v1/jwt/admin-dashboard",
+    sampleCommand: "curl -s -X POST https://aicda-crypto-api.onrender.com/api/v1/jwt/admin-dashboard -H 'Authorization: Bearer <TOKEN>'",
     objective: "Bypass signature validation using algorithm confusion or unsigned tokens to elevate to admin."
   },
   'bleichenbacher-rsa': {
@@ -167,8 +167,8 @@ const LAB_DATA: Record<string, {
       "3. Compute the integer cube root of this value.",
       "4. Submit the hex signature to /api/v1/rsa/verify."
     ],
-    targetEndpoint: "http://localhost:8080/api/v1/rsa/verify",
-    sampleCommand: "curl -s -X POST http://localhost:8080/api/v1/rsa/verify -H 'Content-Type: application/json' -d '{\"message\":\"admin_access=true\",\"signature\":\"<HEX>\"}'",
+    targetEndpoint: "https://aicda-crypto-api.onrender.com/api/v1/rsa/verify",
+    sampleCommand: "curl -s -X POST https://aicda-crypto-api.onrender.com/api/v1/rsa/verify -H 'Content-Type: application/json' -d '{\"message\":\"admin_access=true\",\"signature\":\"<HEX>\"}'",
     objective: "Forge a valid digital signature on administrative parameters using small public exponent cube roots."
   },
   'timing-attack': {
@@ -186,8 +186,8 @@ const LAB_DATA: Record<string, {
       "3. For each candidate character, record request duration. Select the outlier character with the highest latency.",
       "4. Repeat until all 8 PIN digits are recovered."
     ],
-    targetEndpoint: "http://localhost:8080/api/v1/timing/verify-pin",
-    sampleCommand: "curl -s -w '\\nTime: %{time_total}s\\n' -X POST http://localhost:8080/api/v1/timing/verify-pin -H 'Content-Type: application/json' -d '{\"pin\":\"70000000\"}'",
+    targetEndpoint: "https://aicda-crypto-api.onrender.com/api/v1/timing/verify-pin",
+    sampleCommand: "curl -s -w '\\nTime: %{time_total}s\\n' -X POST https://aicda-crypto-api.onrender.com/api/v1/timing/verify-pin -H 'Content-Type: application/json' -d '{\"pin\":\"70000000\"}'",
     objective: "Recover the secret authentication PIN digit-by-digit using microsecond timing differences."
   },
   'weak-pbkdf2': {
@@ -205,8 +205,8 @@ const LAB_DATA: Record<string, {
       "3. Crack the hash with a standard dictionary attack (rockyou.txt or wordlist).",
       "4. Submit the recovered passphrase to /api/v1/pbkdf2/unlock to decrypt the master flag."
     ],
-    targetEndpoint: "http://localhost:8080/api/v1/pbkdf2/unlock",
-    sampleCommand: "curl -s http://localhost:8080/api/v1/pbkdf2/vault-dump",
+    targetEndpoint: "https://aicda-crypto-api.onrender.com/api/v1/pbkdf2/unlock",
+    sampleCommand: "curl -s https://aicda-crypto-api.onrender.com/api/v1/pbkdf2/vault-dump",
     objective: "Extract the low-work-factor PBKDF2 hash, crack the passphrase, and unlock the encrypted vault flag."
   }
 };
@@ -223,7 +223,7 @@ export default function LabSubPage() {
     theory: ['Target protocol specification not found in mainframe database.'],
     steps: ['Return to the dashboard to select a valid challenge.'],
     targetEndpoint: 'N/A',
-    sampleCommand: 'curl http://localhost:8080/health',
+    sampleCommand: 'curl https://aicda-crypto-api.onrender.com/health',
     objective: 'Select an active lab.'
   };
 
